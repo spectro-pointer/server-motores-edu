@@ -30,6 +30,8 @@ pulsremele=True
 dirremazi=False
 dirremele=False
 
+# esta es una modificacion el 14/05/2016
+
 #------------------------------------------------------
 # esta funcion es un thread separado que genera pulsos para los motores de acuerdo
 # a la variable pulsrem
