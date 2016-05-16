@@ -18,6 +18,9 @@
 # 27/04/16 se agrega a la rutina genera_pulsos el chequeo de dos fines de carrera conectados a 2 entradas.
 # Si se cierra alguno de los dos switch el motor no se mueve mas en ese sentido hasta que se abran nuevamente.
 
+# 15/5/2016 se corrige secuencia de generacion de pulsos al motor paso a paso de azimutque para se establezca
+# la direccion antes del pulso.
+
 import RPi.GPIO as GPIO
 import time
 import threading
@@ -29,9 +32,6 @@ pulsremazi=True
 pulsremele=True
 dirremazi=False
 dirremele=False
-
-# esta es una modificacion el 14/05/2016
-
 #------------------------------------------------------
 # esta funcion es un thread separado que genera pulsos para los motores de acuerdo
 # a la variable pulsrem
@@ -42,10 +42,6 @@ def genera_pulsos():
 	try:
 		while True: # do forever
 		#.......................azimut
-			if(GPIO.input(11) and GPIO.input(12) and pulsremazi):  # si los dos switch abiertos
-		        	GPIO.output(40, False)  # la salida va a 0v
-		      	else:
-		          	GPIO.output(40, state)  #cualquiera de los dos switch genera pulsos en la salida
 		       #...............direccion azimut
 			if (not GPIO.input(12)):
     				GPIO.output(38, False)  # gira para un lado fijado por el pulsador
@@ -57,7 +53,11 @@ def genera_pulsos():
     				GPIO.output(38, False)  #gira a la derecha por remoto
 			else:
     				GPIO.output(38, True)   #gira a la izquierda por remoto
-
+			#.............................. pulso de movimienyo
+			if(GPIO.input(11) and GPIO.input(12) and pulsremazi):  # si los dos switch abiertos
+		        	GPIO.output(40, False)  # la salida va a 0v
+		      	else:
+		          	GPIO.output(40, state)  #cualquiera de los dos switch genera pulsos en la salida
 		#........................elevacion
                         parado=False
 			if (not GPIO.input(29)):       # Primero evalua direccion de movimiento y fines de carrera
