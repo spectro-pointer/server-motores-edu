@@ -24,6 +24,8 @@
 # Tambien se agrega modo manual o automatico que se puede cambiar desde el panel de control web que se identifica como
 # "Mant" para el servidor de motores como un cliente ademas de las camaras.
 
+# 21/05/16 Se corrigen algunos errores en la secuencia de servidor xmlrpc.
+
 import RPi.GPIO as GPIO
 import time
 import threading
@@ -116,7 +118,8 @@ def genera_pulsos():
 # orden=16 => pasa a modo manual, no mueve mas los motores a pedido de las camaras
 # Si esta en modo manual:
 # ----------------------
-# orden=0 => motores detenidos, zorrino, limpiador y laser apagados y pasa a modo automatico (responde a camaras)
+# orden=16 => pasa a modo automatico, mueve mas los motores a pedido de las camaras
+# orden=0 => motores detenidos, zorrino, limpiador y laser apagados
 # orden=1 => gira + en azimut
 # orden=3 => gira - en azimut
 # orden=4 => gira + en elevaciion
@@ -124,6 +127,7 @@ def genera_pulsos():
 # orden=32 => enciende limpia optica
 # orden=64 => enciende zorrino
 # orden=128 => enciende puntero laser
+# orden=224 => apaga las 3 salidas de servicio
 
 def set_motores(orden,origen):
     global pulsremazi
@@ -133,55 +137,55 @@ def set_motores(orden,origen):
 
     if set_motores.manual==True:
         print "modo manual"
-        if origen<>"Mant":              # esta en modo manual, se controla desde la web
-            return 1                    # en modo manual solo atiende comandos desde Mant (panel de control manual)
+        if origen<>"Mant":              # esta en modo manual, se controla desde panel de control web
+            return 1                    # en modo manual descarta ordenes del buscador y colimador
         else:
-            if (orden & 32)==32:        # orden limpia optica
+            if orden==32:               # orden limpia optica
                 GPIO.output(32, True)   # lo enciende
-            else:
-                GPIO.output(32, False)  # lo apaga
+                print "Enciende limpiador"
 
-            if (orden & 64)==64:        # orden zorrino
+            elif orden==64:             # orden zorrino
                 GPIO.output(16, True)   # lo enciende
-            else:
-                GPIO.output(16, False)  # lo apaga
+                print "Enciende zorrino"
 
-            if (orden & 128)==128:      # orden puntero laser
+            elif orden==128:            # orden puntero laser
                 GPIO.output(35, True)   # lo enciende
-            else:
-                GPIO.output(35, False)  # lo apaga
+                print "Enciende laser"
 
-            if (orden & 2)==2:
-                dirremazi=True          # define direccion azimut
-            else:
-                dirremazi=False
-
-            if (orden & 1)==1:          #define pulsos en azimut
+            elif (orden & 3)==3:
                 pulsremazi=False        # mueve azimut
-            else:
-                pulsremazi=True         # azimut detenido
+                dirremazi=True          # define direccion azimut
+                print "mueve azimut +"
 
-            if (orden & 8)==8:          # define direccion elevacion
+            elif (orden & 1)==1:    
+                pulsremazi=False        # mueve azimut
+                dirremazi=False         # define direccion azimut
+                print "mueve azimut -"
+            
+            elif (orden & 4)==4:        # define direccion elevacion
                 dirremele=False
-            else:
-                dirremele=True
-
-            if (orden & 4)==4:          #define pulsos en elevacion
                 pulsremele=False        # mueve elevacion
-            else:
-                pulsremele=True	        #elevacion detenida
+                print "mueve elevacion +"
 
-            if orden==16:
-                set_motores.manual=False # Pasa a modo automatico 
+            elif (orden & 12)==12:      #define pulsos en elevacion
+                dirremele=True
+                pulsremele=False        # mueve elevacion
+                print "mueve elevacion -"
+
+            elif orden==16:
+                set_motores.manual=False # Pasa a modo automatico
+                print "pasa a modo automatico"
+                
+            elif orden==224:            #apaga las 3 salidas
+                GPIO.output(32, False)  # apaga limpia optica
+                GPIO.output(16, False)  # apaga zorrino
+                GPIO.output(35, False)  # apaga puntero laser
+                print "Apaga las 3 salidas"
 
             if orden==0:                # test modo automatico
                 pulsremazi=True         # detiene los motores
                 pulsremele=True
-                dirremazi=False
-                dirremele=False
-                GPIO.output(32, False)  # apaga limpia optica
-                GPIO.output(16, False)  # apaga zorrino
-                GPIO.output(35, False)  # apaga puntero laser
+                print "Detiene los motores"
         return 1
 #........................................
     else:                               # esta en modo automatico, las camaras mueven los motores
@@ -189,8 +193,12 @@ def set_motores(orden,origen):
         if origen=="Mant":              # Analiza si llego mensaje del panel de control para pasar a manual
             if (orden & 16)==16:        # mensaje del panel de control, pasa a manual
                 set_motores.manual=True
+                print "pasa a modo manual"
                 return 1
-        elif origen=="Busca":             # Analiza si llego mensaje del buscador y si esta centrado
+            else:
+                return 1                # Cualquier orden del panel de control que no sea pasar a manual
+                                        # estando en modo automatico, la descarta.
+        elif origen=="Busca":           # Analiza si llego mensaje del buscador y si esta centrado
             if (orden & 16)==16:        # mensaje del buscador, ve si esta centrado
                 cent="Centrado"
                 set_motores.centrado=True
@@ -198,14 +206,15 @@ def set_motores(orden,origen):
                 cent="No centr"
                 set_motores.centrado=False
         else:
-            accion="No da bola"
-            if (orden & 16)==16:    # mensaje del buscador, ve si esta centrado
+            if (orden & 16)==16:        # mensaje del colimador, ve si esta centrado
                 cent="Centrado"
             else:
                 cent="No centr"
-                if set_motores.centrado==False:  # mensaje del colimador, si buscador "No centrado", no da bola
-                    print origen, orden, cent, accion  # imprime que orden recibio y de que maquina
-                    return 1
+
+            if set_motores.centrado==False:  # mensaje del colimador, si buscador "No centrado", no da bola
+                accion="No da bola"
+                print origen, orden, cent, accion  # imprime que orden recibio y de que maquina
+                return 1
 
 #...........................................movimientos del motor
         if (orden & 15)==0:
@@ -245,8 +254,8 @@ def set_motores(orden,origen):
             else:
                 pulsremele=True	  #elevacion detenida
 #..................................
-            print origen, orden, cent, accion  #imprime que orden recibio y de que maquina
-            return 1		# devuelve un 1 porque algo hay que devolver, sino da error, pero ese 1 no significa nada.
+        print origen, orden, cent, accion  #imprime que orden recibio y de que maquina
+        return 1		# devuelve un 1 porque algo hay que devolver, sino da error, pero ese 1 no significa nada.
 #------------------------------------------------------------------
 # Main
 # Recordatorio de la funcion de cada pin en pantalla
