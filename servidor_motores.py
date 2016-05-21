@@ -162,15 +162,15 @@ def set_motores(orden,origen):
                 dirremazi=False         # define direccion azimut
                 print "mueve azimut -"
             
-            elif (orden & 4)==4:        # define direccion elevacion
-                dirremele=False
-                pulsremele=False        # mueve elevacion
-                print "mueve elevacion +"
-
             elif (orden & 12)==12:      #define pulsos en elevacion
                 dirremele=True
                 pulsremele=False        # mueve elevacion
                 print "mueve elevacion -"
+
+            elif (orden & 4)==4:        # define direccion elevacion
+                dirremele=False
+                pulsremele=False        # mueve elevacion
+                print "mueve elevacion +"
 
             elif orden==16:
                 set_motores.manual=False # Pasa a modo automatico
