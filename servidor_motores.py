@@ -163,12 +163,12 @@ def set_motores(orden,origen):
                 print "mueve azimut -"
             
             elif (orden & 12)==12:      #define pulsos en elevacion
-                dirremele=True
+                dirremele=False
                 pulsremele=False        # mueve elevacion
                 print "mueve elevacion -"
 
             elif (orden & 4)==4:        # define direccion elevacion
-                dirremele=False
+                dirremele=True
                 pulsremele=False        # mueve elevacion
                 print "mueve elevacion +"
 
@@ -194,6 +194,8 @@ def set_motores(orden,origen):
             if (orden & 16)==16:        # mensaje del panel de control, pasa a manual
                 set_motores.manual=True
                 print "pasa a modo manual"
+                pulsremazi=True         # detiene los motores
+                pulsremele=True
                 return 1
             else:
                 return 1                # Cualquier orden del panel de control que no sea pasar a manual
