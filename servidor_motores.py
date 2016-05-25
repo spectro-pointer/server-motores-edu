@@ -25,6 +25,7 @@
 # "Mant" para el servidor de motores como un cliente ademas de las camaras.
 
 # 21/05/16 Se corrigen algunos errores en la secuencia de servidor xmlrpc.
+# 23/05/2016 se responde diferente en modo manual a la interrogacion de Busca o Coli para que reintenten.
 
 import RPi.GPIO as GPIO
 import time
@@ -138,7 +139,7 @@ def set_motores(orden,origen):
     if set_motores.manual==True:
         print "modo manual"
         if origen<>"Mant":              # esta en modo manual, se controla desde panel de control web
-            return 1                    # en modo manual descarta ordenes del buscador y colimador
+            return 2                    # en modo manual descarta ordenes del buscador y colimador
         else:
             if orden==32:               # orden limpia optica
                 GPIO.output(32, True)   # lo enciende
