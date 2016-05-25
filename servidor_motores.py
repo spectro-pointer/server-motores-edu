@@ -26,6 +26,7 @@
 
 # 21/05/16 Se corrigen algunos errores en la secuencia de servidor xmlrpc.
 # 23/05/2016 se responde diferente en modo manual a la interrogacion de Busca o Coli para que reintenten.
+# 25/05/2016 se agrega contador de pulsos en azimut y elevacion para usarlo como modo de medicion de la posicion en el espacio.
 
 import RPi.GPIO as GPIO
 import time
@@ -45,61 +46,67 @@ dirremele=False
 # camara buscadora, camara colimadora o control manual.
 
 def genera_pulsos():
-	parado=False
-	state=True
-	try:
-		while True: # do forever
-		#.......................azimut
-		       #...............direccion azimut
-			if (not GPIO.input(12)):
-    				GPIO.output(38, False)  # gira para un lado fijado por el pulsador
+    parado=False
+    state=True
+    dazi=1
+    dele=1
+    medazi=0
+    medele=0        # inicializa medidores de azimut y elevacion
+    try:
+        while True: # do forever
+#.....................................................................azimut
+            if (not GPIO.input(12)):                                # evalua direccion azimut
+                GPIO.output(38, False)                              # gira para un lado fijado por el pulsador
+                dazi=1
+            elif (not GPIO.input(11)):
+                GPIO.output(38, True)                               # o para el otro fijado por el otro pulsador
+                dazi=-1
+            elif (not dirremazi):
+                GPIO.output(38, False)                              # gira a la derecha por remoto
+                dazi=1
+            else:
+                GPIO.output(38, True)                               # gira a la izquierda por remoto
+                dazi=-1
+            #........................................................ pulsos en azimut
+            if(GPIO.input(11) and GPIO.input(12) and pulsremazi):   # si los dos switch abiertos
+                GPIO.output(40, False)                              # la salida va a 0v (detenida)
+            else:
+                GPIO.output(40, state)                              # cualquiera de los dos switch genera pulsos en la salida
+                medazi=medazi+dazi                   
+#.................................................................... elevacion
+            #parado=False
+            if (not GPIO.input(29)):                                # Primero evalua direccion de movimiento y fines de carrera
+                GPIO.output(36, True)                               # gira para arriba fijado por el pulsador
+                if (not GPIO.input(15)):                            # test fin de carrera
+                    parado=True                                     # piso fin de carrera, detiene el motor
 
-			elif (not GPIO.input(11)):
-    				GPIO.output(38, True)   # o para el otro fijado por el otro pulsador
+            elif (not GPIO.input(18)):
+                GPIO.output(36, False)                              # o para abajo fijado por el otro pulsador
+                if (not GPIO.input(13)):
+                    parado=True                                     # piso fin de carrera, detiene el motor
 
-			elif (not dirremazi):
-    				GPIO.output(38, False)  #gira a la derecha por remoto
-			else:
-    				GPIO.output(38, True)   #gira a la izquierda por remoto
-			#.............................. pulso de movimienyo
-			if(GPIO.input(11) and GPIO.input(12) and pulsremazi):  # si los dos switch abiertos
-		        	GPIO.output(40, False)  # la salida va a 0v
-		      	else:
-		          	GPIO.output(40, state)  #cualquiera de los dos switch genera pulsos en la salida
-		#........................elevacion
-                        parado=False
-			if (not GPIO.input(29)):       # Primero evalua direccion de movimiento y fines de carrera
-    				GPIO.output(36, True)  # gira para arriba fijado por el pulsador
-			        if (not GPIO.input(15)):
-				   parado=True		#piso fin de carrera, detiene el motor
-
-			elif (not GPIO.input(18)):
-    				GPIO.output(36, False) # o para abajo fijado por el otro pulsador
-			        if (not GPIO.input(13)):
-				   parado=True		#piso fin de carrera, detiene el motor
-
-			elif (not dirremele):
-    				GPIO.output(36, True)  # gira para arriba por orden remota
-			        if (not GPIO.input(15)):
-				   parado=True		#piso fin de carrera, detiene el motor
-			else:
-    				GPIO.output(36, False) # gira para abajo por orden remota
-			        if (not GPIO.input(13)):
-				   parado=True		#piso fin de carrera, detiene el motor
-			#----------------------------
-		      	if(GPIO.input(18) and GPIO.input(29) and pulsremele):  # si los dos switch abiertos
-		               	GPIO.output(37, False)  # la salida va a 0v
-		      	else:
-				if (not parado):	#si se piso algun fin de carrera no mueve elevacion
-					GPIO.output(37, state)  #cualquiera de los dos switch genera pulsos en la salida
-                       #----------------------------
-			state = not state
-		        #if (GPIO.input(8)):  #entrada 8 cerrada a masa para alta velocidad
-			time.sleep(0.005)  # 0.001 con 1600 pulsos por vuelta funciona bien hasta 0.0001 , o sea 100 useg funciona
-
-	except KeyboardInterrupt:
-		GPIO.cleanup()
-#		exit
+            elif (not dirremele):
+                GPIO.output(36, True)                               # gira para arriba por orden remota
+                if (not GPIO.input(15)):
+                    parado=True                                     # piso fin de carrera, detiene el motor
+            else:
+                GPIO.output(36, False)                              # gira para abajo por orden remota
+                if (not GPIO.input(13)):
+                    parado=True                                     # piso fin de carrera, detiene el motor
+            #----------------------------
+            if(GPIO.input(18) and GPIO.input(29) and pulsremele):   # si los dos switch abiertos
+                GPIO.output(37, False)                              # la salida va a 0v
+            else:
+                if (not parado):                                    # si se piso algun fin de carrera no mueve elevacion
+                    GPIO.output(37, state)                          # cualquiera de los dos switch genera pulsos en la salida
+            #----------------------------
+            state = not state
+            #if (GPIO.input(8)):  #entrada 8 cerrada a masa para alta velocidad
+            time.sleep(0.005)  # 0.001 con 1600 pulsos por vuelta funciona bien hasta 0.0001 , o sea 100 useg funciona
+            print medazi, medele
+    except KeyboardInterrupt:
+        GPIO.cleanup()
+#       exit
 #-------------------------------------------------
 # SERVIDOR:
 # Definimos la funcion que va a atender los llamados desde el cliente para saber si mueve el motor.
@@ -255,10 +262,10 @@ def set_motores(orden,origen):
                 else:
                     accion="elevacion -"
             else:
-                pulsremele=True	  #elevacion detenida
+                pulsremele=True   #elevacion detenida
 #..................................
         print origen, orden, cent, accion  #imprime que orden recibio y de que maquina
-        return 1		# devuelve un 1 porque algo hay que devolver, sino da error, pero ese 1 no significa nada.
+        return 1        # devuelve un 1 porque algo hay que devolver, sino da error, pero ese 1 no significa nada.
 #------------------------------------------------------------------
 # Main
 # Recordatorio de la funcion de cada pin en pantalla
