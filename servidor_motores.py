@@ -27,6 +27,7 @@
 # 21/05/16 Se corrigen algunos errores en la secuencia de servidor xmlrpc.
 # 23/05/2016 se responde diferente en modo manual a la interrogacion de Busca o Coli para que reintenten.
 # 25/05/2016 se agrega contador de pulsos en azimut y elevacion para usarlo como modo de medicion de la posicion en el espacio.
+# 28/05/2016 se cambia modo de imprimir los comandos recibidos desde los clientes y se agrega coordenadas al print de cada comando
 
 import RPi.GPIO as GPIO
 import time
@@ -39,6 +40,9 @@ pulsremazi=True
 pulsremele=True
 dirremazi=False
 dirremele=False
+medazi=0
+medele=0        # inicializa medidores de azimut y elevacion
+
 #------------------------------------------------------
 # esta funcion es un thread separado que genera pulsos para los motores de acuerdo
 # a si se pulsa o no un boton manual y a las variables dirremazi, pulsremazi, dirremele
@@ -49,12 +53,16 @@ def genera_pulsos():
     parado=False
     state=True
     dazi=1
-    dele=1
-    medazi=0
-    medele=0        # inicializa medidores de azimut y elevacion
+    dele=1     # inicializa deltas para medidores de azimut y elevacion
+    global medazi
+    global medele
+    
     try:
         while True: # do forever
 #.....................................................................azimut
+            if (not GPIO.input(31)):                                # test cero del azimut
+                medazi=0                                            # pone a cero el contador de azimut
+            
             if (not GPIO.input(12)):                                # evalua direccion azimut
                 GPIO.output(38, False)                              # gira para un lado fijado por el pulsador
                 dazi=1
@@ -77,20 +85,25 @@ def genera_pulsos():
             #parado=False
             if (not GPIO.input(29)):                                # Primero evalua direccion de movimiento y fines de carrera
                 GPIO.output(36, True)                               # gira para arriba fijado por el pulsador
+                dele=1
                 if (not GPIO.input(15)):                            # test fin de carrera
                     parado=True                                     # piso fin de carrera, detiene el motor
 
             elif (not GPIO.input(18)):
                 GPIO.output(36, False)                              # o para abajo fijado por el otro pulsador
+                dele=-1
                 if (not GPIO.input(13)):
+                    medele=0                                        # este fin de carrera es tanbien el cero del medidor de elevacion
                     parado=True                                     # piso fin de carrera, detiene el motor
 
             elif (not dirremele):
                 GPIO.output(36, True)                               # gira para arriba por orden remota
+                dele=1
                 if (not GPIO.input(15)):
                     parado=True                                     # piso fin de carrera, detiene el motor
             else:
                 GPIO.output(36, False)                              # gira para abajo por orden remota
+                dele=-1
                 if (not GPIO.input(13)):
                     parado=True                                     # piso fin de carrera, detiene el motor
             #----------------------------
@@ -99,11 +112,12 @@ def genera_pulsos():
             else:
                 if (not parado):                                    # si se piso algun fin de carrera no mueve elevacion
                     GPIO.output(37, state)                          # cualquiera de los dos switch genera pulsos en la salida
+                    medele=medele+dele
             #----------------------------
             state = not state
             #if (GPIO.input(8)):  #entrada 8 cerrada a masa para alta velocidad
             time.sleep(0.005)  # 0.001 con 1600 pulsos por vuelta funciona bien hasta 0.0001 , o sea 100 useg funciona
-            print medazi, medele
+            
     except KeyboardInterrupt:
         GPIO.cleanup()
 #       exit
@@ -142,70 +156,79 @@ def set_motores(orden,origen):
     global pulsremele
     global dirremazi
     global dirremele
-
+    global medazi
+    global medele
+    
     if set_motores.manual==True:
-        print "modo manual"
+        modo="modo manual"
         if origen<>"Mant":              # esta en modo manual, se controla desde panel de control web
+            accion="No hace nada"
+            print modo, origen, orden, accion, medazi, medele
             return 2                    # en modo manual descarta ordenes del buscador y colimador
         else:
             if orden==32:               # orden limpia optica
                 GPIO.output(32, True)   # lo enciende
-                print "Enciende limpiador"
+                accion="Enciende limpiador"
 
             elif orden==64:             # orden zorrino
                 GPIO.output(16, True)   # lo enciende
-                print "Enciende zorrino"
+                accion="Enciende zorrino"
 
             elif orden==128:            # orden puntero laser
                 GPIO.output(35, True)   # lo enciende
-                print "Enciende laser"
+                accion="Enciende laser"
 
             elif (orden & 3)==3:
                 pulsremazi=False        # mueve azimut
                 dirremazi=True          # define direccion azimut
-                print "mueve azimut +"
+                accion="mueve azimut +"
 
             elif (orden & 1)==1:    
                 pulsremazi=False        # mueve azimut
                 dirremazi=False         # define direccion azimut
-                print "mueve azimut -"
+                accion="mueve azimut -"
             
             elif (orden & 12)==12:      #define pulsos en elevacion
                 dirremele=False
                 pulsremele=False        # mueve elevacion
-                print "mueve elevacion -"
+                accion="mueve elevacion -"
 
             elif (orden & 4)==4:        # define direccion elevacion
                 dirremele=True
                 pulsremele=False        # mueve elevacion
-                print "mueve elevacion +"
+                accion="mueve elevacion +"
 
             elif orden==16:
                 set_motores.manual=False # Pasa a modo automatico
-                print "pasa a modo automatico"
+                accion="pasa a modo automatico"
                 
             elif orden==224:            #apaga las 3 salidas
                 GPIO.output(32, False)  # apaga limpia optica
                 GPIO.output(16, False)  # apaga zorrino
                 GPIO.output(35, False)  # apaga puntero laser
-                print "Apaga las 3 salidas"
+                accion="Apaga las 3 salidas"
 
             if orden==0:                # test modo automatico
                 pulsremazi=True         # detiene los motores
                 pulsremele=True
-                print "Detiene los motores"
+                accion="Detiene los motores"
+        
+        print modo, origen, orden, accion, medazi, medele
         return 1
 #........................................
     else:                               # esta en modo automatico, las camaras mueven los motores
-        print "modo automatico"
+        modo="modo automatico"
         if origen=="Mant":              # Analiza si llego mensaje del panel de control para pasar a manual
             if (orden & 16)==16:        # mensaje del panel de control, pasa a manual
                 set_motores.manual=True
-                print "pasa a modo manual"
+                accion="pasa a modo manual"
                 pulsremazi=True         # detiene los motores
                 pulsremele=True
+                print modo, origen, orden, accion, medazi, medele
                 return 1
             else:
+                accion="No hace nada"
+                print modo, origen, orden, accion, medazi, medele
                 return 1                # Cualquier orden del panel de control que no sea pasar a manual
                                         # estando en modo automatico, la descarta.
         elif origen=="Busca":           # Analiza si llego mensaje del buscador y si esta centrado
@@ -223,7 +246,7 @@ def set_motores(orden,origen):
 
             if set_motores.centrado==False:  # mensaje del colimador, si buscador "No centrado", no da bola
                 accion="No da bola"
-                print origen, orden, cent, accion  # imprime que orden recibio y de que maquina
+                print modo, origen, orden, accion, cent, medazi, medele  # imprime que orden recibio y de que maquina
                 return 1
 
 #...........................................movimientos del motor
@@ -264,7 +287,7 @@ def set_motores(orden,origen):
             else:
                 pulsremele=True   #elevacion detenida
 #..................................
-        print origen, orden, cent, accion  #imprime que orden recibio y de que maquina
+        print modo, origen, orden, accion, cent, medazi, medele  #imprime que orden recibio y de que maquina
         return 1        # devuelve un 1 porque algo hay que devolver, sino da error, pero ese 1 no significa nada.
 #------------------------------------------------------------------
 # Main
@@ -290,14 +313,15 @@ GPIO.setup(32, GPIO.OUT)  #define pin 32 como salida  limpia optica
 GPIO.setup(16, GPIO.OUT)  #define pin 16 como salida  zorrino
 GPIO.setup(35, GPIO.OUT)  #define pin 35 como salida  puntero laser
 
-# define entradas 11, 12, 18 , 29, 8, 13 y 15 con resistencia de pull up
+# define entradas 11, 12, 18 , 29, 8, 13 , 15 y 31 con resistencia de pull up
 GPIO.setup(11,GPIO.IN, pull_up_down=GPIO.PUD_UP)   # pulsador azimut
 GPIO.setup(12,GPIO.IN, pull_up_down=GPIO.PUD_UP)   # pulsador azimut
 GPIO.setup(18,GPIO.IN, pull_up_down=GPIO.PUD_UP)   # pulsador elevacion
 GPIO.setup(29,GPIO.IN, pull_up_down=GPIO.PUD_UP)   # pulsador elevacion
 GPIO.setup(8,GPIO.IN, pull_up_down=GPIO.PUD_UP)
-GPIO.setup(13,GPIO.IN, pull_up_down=GPIO.PUD_UP)   # fin de carrera elevacion
+GPIO.setup(13,GPIO.IN, pull_up_down=GPIO.PUD_UP)   # fin de carrera elevacion y cero del medidor de elevacion
 GPIO.setup(15,GPIO.IN, pull_up_down=GPIO.PUD_UP)   # fin de carrera elevacion
+GPIO.setup(31,GPIO.IN, pull_up_down=GPIO.PUD_UP)   # cero del medidor de azimut
 
 #Definimos el thread y lo lanzamos
 threadObj = threading.Thread(target=genera_pulsos)
