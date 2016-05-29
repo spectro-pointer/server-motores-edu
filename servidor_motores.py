@@ -28,6 +28,7 @@
 # 23/05/2016 se responde diferente en modo manual a la interrogacion de Busca o Coli para que reintenten.
 # 25/05/2016 se agrega contador de pulsos en azimut y elevacion para usarlo como modo de medicion de la posicion en el espacio.
 # 28/05/2016 se cambia modo de imprimir los comandos recibidos desde los clientes y se agrega coordenadas al print de cada comando
+# 29/05/2016 se arreglan varios errores encontrados por Gustavo.
 
 import RPi.GPIO as GPIO
 import time
@@ -65,16 +66,16 @@ def genera_pulsos():
             
             if (not GPIO.input(12)):                                # evalua direccion azimut
                 GPIO.output(38, False)                              # gira para un lado fijado por el pulsador
-                dazi=1
+                dazi=-1
             elif (not GPIO.input(11)):
                 GPIO.output(38, True)                               # o para el otro fijado por el otro pulsador
-                dazi=-1
+                dazi=1
             elif (not dirremazi):
                 GPIO.output(38, False)                              # gira a la derecha por remoto
-                dazi=1
+                dazi=-1
             else:
                 GPIO.output(38, True)                               # gira a la izquierda por remoto
-                dazi=-1
+                dazi=1
             #........................................................ pulsos en azimut
             if(GPIO.input(11) and GPIO.input(12) and pulsremazi):   # si los dos switch abiertos
                 GPIO.output(40, False)                              # la salida va a 0v (detenida)
@@ -82,30 +83,31 @@ def genera_pulsos():
                 GPIO.output(40, state)                              # cualquiera de los dos switch genera pulsos en la salida
                 medazi=medazi+dazi                   
 #.................................................................... elevacion
-            #parado=False
+            parado=False
             if (not GPIO.input(29)):                                # Primero evalua direccion de movimiento y fines de carrera
                 GPIO.output(36, True)                               # gira para arriba fijado por el pulsador
-                dele=1
+                dele=-1
                 if (not GPIO.input(15)):                            # test fin de carrera
                     parado=True                                     # piso fin de carrera, detiene el motor
 
             elif (not GPIO.input(18)):
                 GPIO.output(36, False)                              # o para abajo fijado por el otro pulsador
-                dele=-1
+                dele=1
                 if (not GPIO.input(13)):
                     medele=0                                        # este fin de carrera es tanbien el cero del medidor de elevacion
                     parado=True                                     # piso fin de carrera, detiene el motor
 
             elif (not dirremele):
                 GPIO.output(36, True)                               # gira para arriba por orden remota
-                dele=1
+                dele=-1
                 if (not GPIO.input(15)):
                     parado=True                                     # piso fin de carrera, detiene el motor
             else:
                 GPIO.output(36, False)                              # gira para abajo por orden remota
-                dele=-1
+                dele=1
                 if (not GPIO.input(13)):
                     parado=True                                     # piso fin de carrera, detiene el motor
+                    medele=0
             #----------------------------
             if(GPIO.input(18) and GPIO.input(29) and pulsremele):   # si los dos switch abiertos
                 GPIO.output(37, False)                              # la salida va a 0v
@@ -163,7 +165,7 @@ def set_motores(orden,origen):
         modo="modo manual"
         if origen<>"Mant":              # esta en modo manual, se controla desde panel de control web
             accion="No hace nada"
-            print modo, origen, orden, accion, medazi, medele
+            # print modo, origen, orden, accion, medazi, medele
             return 2                    # en modo manual descarta ordenes del buscador y colimador
         else:
             if orden==32:               # orden limpia optica
