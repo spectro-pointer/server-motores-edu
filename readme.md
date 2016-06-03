@@ -1,5 +1,5 @@
 # Serveur-motores
 ## Running the script
 ```bash
-sudo servidor_motores.py
+sudo python  servidor_motores.py
 ```
