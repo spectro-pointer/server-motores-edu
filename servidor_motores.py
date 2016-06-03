@@ -331,7 +331,7 @@ threadObj.setDaemon(True)
 threadObj.start()
 
 # Abrimos el servidor para que acepte peticiones.
-server = SimpleXMLRPCServer(("192.168.0.106", 8000)) # aca poner la IP correcta de esta RPI
+server = SimpleXMLRPCServer(("192.168.0.101", 8000)) # aca poner la IP correcta de esta RPI
 print "Listening on port 8000..."                    # se queda escuchando a clientes en el puerto 8000
 
 # Registramos la funcion que hemos definido.
