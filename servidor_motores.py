@@ -31,6 +31,7 @@ import RPi.GPIO as GPIO
 import time
 import threading
 import xmlrpclib
+import socket
 from SimpleXMLRPCServer import SimpleXMLRPCServer
 
 # Inicializa variables globales
@@ -38,6 +39,10 @@ pulsremazi=True
 pulsremele=True
 dirremazi=False
 dirremele=False
+
+# Get local address (works only with one)
+ip_address = socket.gethostbyname(socket.gethostname())
+
 #------------------------------------------------------
 # esta funcion es un thread separado que genera pulsos para los motores de acuerdo
 # a si se pulsa o no un boton manual y a las variables dirremazi, pulsremazi, dirremele
@@ -298,7 +303,7 @@ threadObj.setDaemon(True)
 threadObj.start()
 
 # Abrimos el servidor para que acepte peticiones.
-server = SimpleXMLRPCServer(("192.168.0.106", 8000)) # aca poner la IP correcta de esta RPI
+server = SimpleXMLRPCServer((ip_address, 8000)) # aca poner la IP correcta de esta RPI
 print "Listening on port 8000..."                    # se queda escuchando a clientes en el puerto 8000
 
 # Registramos la funcion que hemos definido.
