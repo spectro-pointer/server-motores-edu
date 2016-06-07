@@ -29,7 +29,7 @@
 # 25/05/2016 se agrega contador de pulsos en azimut y elevacion para usarlo como modo de medicion de la posicion en el espacio.
 # 28/05/2016 se cambia modo de imprimir los comandos recibidos desde los clientes y se agrega coordenadas al print de cada comando
 # 29/05/2016 se arreglan varios errores encontrados por Gustavo.
-
+# 06/06/2016 se hace un nuevo mapeo de pines -para el nuevo pcb
 import RPi.GPIO as GPIO
 import time
 import threading
