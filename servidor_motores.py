@@ -30,12 +30,34 @@
 # 28/05/2016 se cambia modo de imprimir los comandos recibidos desde los clientes y se agrega coordenadas al print de cada comando
 # 29/05/2016 se arreglan varios errores encontrados por Gustavo.
 # 06/06/2016 se hace un nuevo mapeo de pines -para el nuevo pcb
+# 08/06/2016 se simplifica el seteo de pines de entrada y salida y de la ip de la placa.
+
 import RPi.GPIO as GPIO
 import time
 import threading
 import xmlrpclib
-import socket
 from SimpleXMLRPCServer import SimpleXMLRPCServer
+
+# Definicion de entradas y salidas de la placa:
+# ---------------------------------------------
+# Salidas:
+PULSOS_AZI=40   # pulsos azimut
+DIR_AZI=38      # direccion azimut
+PULSOS_ELE=36   # pulsos elevacion
+DIR_ELE=32      # direccion elevacion
+LIMPIA=12       # limpia optica
+ZORRO=16        # zorrino
+LASER=18        # puntero laser
+
+# Entradas:
+PULAZDER=35     # pulsador azimut a la derecha
+PULAZIZQ=37     # pulsador azimut a la izquierda
+PULELEARR=31    # pulsador elevacion arriba
+PULELEABA=33    # pulsador elevacion abajo
+FINELEABA=26    # fin de carrera elevacion y cero del medidor de elevacion
+FINELEARR=24    # fin de carrera elevacion
+HOME=22         # cero del medidor de azimut
+
 
 # Inicializa variables globales
 pulsremazi=True
@@ -45,8 +67,8 @@ dirremele=False
 medazi=0
 medele=0        # inicializa medidores de azimut y elevacion
 
-# Get local address (works only with one)
-ip_address = socket.gethostbyname(socket.gethostname())
+# Set local address
+ip_address = '192.168.0.106'  # aca poner la IP correcta de esta RPI
 
 #------------------------------------------------------
 # esta funcion es un thread separado que genera pulsos para los motores de acuerdo
@@ -65,59 +87,59 @@ def genera_pulsos():
     try:
         while True: # do forever
 #.....................................................................azimut
-            if (not GPIO.input(22)):                                # test cero del azimut
-                medazi=0                                            # pone a cero el contador de azimut
+            if (not GPIO.input(HOME)):                                   # test cero del azimut
+                medazi=0                                                 # pone a cero el contador de azimut
 
-            if (not GPIO.input(37)):                                # evalua direccion azimut
-                GPIO.output(38, False)                              # gira para un lado fijado por el pulsador
+            if (not GPIO.input(PULAZDER)):                               # evalua direccion azimut
+                GPIO.output(DIR_AZI, False)                              # gira para un lado fijado por el pulsador
                 dazi=-1
-            elif (not GPIO.input(35)):
-                GPIO.output(38, True)                               # o para el otro fijado por el otro pulsador
+            elif (not GPIO.input(PULAZIZQ)):
+                GPIO.output(DIR_AZI, True)                               # o para el otro fijado por el otro pulsador
                 dazi=1
             elif (not dirremazi):
-                GPIO.output(38, False)                              # gira a la derecha por remoto
+                GPIO.output(DIR_AZI, False)                              # gira a la derecha por remoto
                 dazi=-1
             else:
-                GPIO.output(38, True)                               # gira a la izquierda por remoto
+                GPIO.output(DIR_AZI, True)                               # gira a la izquierda por remoto
                 dazi=1
             #........................................................ pulsos en azimut
-            if(GPIO.input(37) and GPIO.input(35) and pulsremazi):   # si los dos switch abiertos
-                GPIO.output(40, False)                              # la salida va a 0v (detenida)
+            if(GPIO.input(PULAZDER) and GPIO.input(PULAZIZQ) and pulsremazi):   # si los dos switch abiertos
+                GPIO.output(PULSOS_AZI, False)                           # la salida va a 0v (detenida)
             else:
-                GPIO.output(40, state)                              # cualquiera de los dos switch genera pulsos en la salida
+                GPIO.output(PULSOS_AZI, state)                           # cualquiera de los dos switch genera pulsos en la salida
                 medazi=medazi+dazi
 #.................................................................... elevacion
             parado=False
-            if (not GPIO.input(33)):                                # Primero evalua direccion de movimiento y fines de carrera
-                GPIO.output(36, True)                               # gira para arriba fijado por el pulsador
+            if (not GPIO.input(PULELEABA)):                              # Primero evalua direccion de movimiento y fines de carrera
+                GPIO.output(DIR_ELE, True)                               # gira para arriba fijado por el pulsador
                 dele=-1
-                if (not GPIO.input(24)):                            # test fin de carrera
-                    parado=True                                     # piso fin de carrera, detiene el motor
+                if (not GPIO.input(FINELEARR)):                          # test fin de carrera
+                    parado=True                                          # piso fin de carrera, detiene el motor
 
-            elif (not GPIO.input(31)):
-                GPIO.output(36, False)                              # o para abajo fijado por el otro pulsador
+            elif (not GPIO.input(PULELEARR)):
+                GPIO.output(DIR_ELE, False)                              # o para abajo fijado por el otro pulsador
                 dele=1
-                if (not GPIO.input(26)):
-                    medele=0                                        # este fin de carrera es tanbien el cero del medidor de elevacion
-                    parado=True                                     # piso fin de carrera, detiene el motor
+                if (not GPIO.input(FINELEABA)):
+                    medele=0                                             # este fin de carrera es tanbien el cero del medidor de elevacion
+                    parado=True                                          # piso fin de carrera, detiene el motor
 
             elif (not dirremele):
-                GPIO.output(36, True)                               # gira para arriba por orden remota
+                GPIO.output(DIR_ELE, True)                               # gira para arriba por orden remota
                 dele=-1
-                if (not GPIO.input(26)):
-                    parado=True                                     # piso fin de carrera, detiene el motor
+                if (not GPIO.input(FINELEABA)):
+                    parado=True                                          # piso fin de carrera, detiene el motor
             else:
-                GPIO.output(36, False)                              # gira para abajo por orden remota
+                GPIO.output(DIR_ELE, False)                              # gira para abajo por orden remota
                 dele=1
-                if (not GPIO.input(24)):
-                    parado=True                                     # piso fin de carrera, detiene el motor
+                if (not GPIO.input(FINELEARR)):
+                    parado=True                                          # piso fin de carrera, detiene el motor
                     medele=0
             #----------------------------
-            if(GPIO.input(31) and GPIO.input(33) and pulsremele):   # si los dos switch abiertos
-                GPIO.output(32, False)                              # la salida va a 0v
+            if(GPIO.input(PULELEARR) and GPIO.input(PULELEABA) and pulsremele):   # si los dos switch abiertos
+                GPIO.output(PULSOS_ELE, False)                           # la salida va a 0v
             else:
-                if (not parado):                                    # si se piso algun fin de carrera no mueve elevacion
-                    GPIO.output(32, state)                          # cualquiera de los dos switch genera pulsos en la salida
+                if (not parado):                                         # si se piso algun fin de carrera no mueve elevacion
+                    GPIO.output(PULSOS_ELE, state)                       # cualquiera de los dos switch genera pulsos en la salida
                     medele=medele+dele
             #----------------------------
             state = not state
@@ -173,15 +195,15 @@ def set_motores(orden,origen):
             return 2                    # en modo manual descarta ordenes del buscador y colimador
         else:
             if orden==32:               # orden limpia optica
-                GPIO.output(12, True)   # lo enciende
+                GPIO.output(LIMPIA, True)   # lo enciende
                 accion="Enciende limpiador"
 
             elif orden==64:             # orden zorrino
-                GPIO.output(16, True)   # lo enciende
+                GPIO.output(ZORRO, True)   # lo enciende
                 accion="Enciende zorrino"
 
             elif orden==128:            # orden puntero laser
-                GPIO.output(18, True)   # lo enciende
+                GPIO.output(LASER, True)   # lo enciende
                 accion="Enciende laser"
 
             elif (orden & 3)==3:
@@ -209,9 +231,9 @@ def set_motores(orden,origen):
                 accion="pasa a modo automatico"
 
             elif orden==224:            #apaga las 3 salidas
-                GPIO.output(12, False)  # apaga limpia optica
-                GPIO.output(16, False)  # apaga zorrino
-                GPIO.output(18, False)  # apaga puntero laser
+                GPIO.output(LIMPIA, False)  # apaga limpia optica
+                GPIO.output(ZORRO, False)  # apaga zorrino
+                GPIO.output(LASER, False)  # apaga puntero laser
                 accion="Apaga las 3 salidas"
 
             if orden==0:                # test modo automatico
@@ -310,24 +332,23 @@ set_motores.centrado=False
 set_motores.manual=True
 
 GPIO.setwarnings(False)
-GPIO.setmode(GPIO.BOARD)  #selecciona numero de pines del conector
-GPIO.setup(40, GPIO.OUT)  #define pin 40 como salida  pulsos azimut
-GPIO.setup(38, GPIO.OUT)   #define pin 38 como salida direccion azimut
-GPIO.setup(32, GPIO.OUT)  #define pin 32 como salida  pulsos elevacion
-GPIO.setup(36, GPIO.OUT)  #define pin 36 como salida  direccion elevacion
-GPIO.setup(12, GPIO.OUT)  #define pin 12 como salida  limpia optica
-GPIO.setup(16, GPIO.OUT)  #define pin 16 como salida  zorrino
-GPIO.setup(18, GPIO.OUT)  #define pin 18 como salida  puntero laser
+GPIO.setmode(GPIO.BOARD)            #selecciona numero de pines del conector
+GPIO.setup(PULSOS_AZI, GPIO.OUT)    #define pin salida  pulsos azimut
+GPIO.setup(DIR_AZI, GPIO.OUT)       #define pin salida direccion azimut
+GPIO.setup(PULSOS_ELE, GPIO.OUT)    #define pin salida  pulsos elevacion
+GPIO.setup(DIR_ELE, GPIO.OUT)       #define pin direccion elevacion
+GPIO.setup(LIMPIA, GPIO.OUT)        #define pin salida  limpia optica
+GPIO.setup(ZORRO, GPIO.OUT)         #define pin salida  zorrino
+GPIO.setup(LASER, GPIO.OUT)         #define pin salida  puntero laser
 
-# define entradas 37,35,31,33,8,26,24,22  resistencia de pull up
-GPIO.setup(37,GPIO.IN, pull_up_down=GPIO.PUD_UP)   # pulsador azimut
-GPIO.setup(35,GPIO.IN, pull_up_down=GPIO.PUD_UP)   # pulsador azimut
-GPIO.setup(31,GPIO.IN, pull_up_down=GPIO.PUD_UP)   # pulsador elevacion
-GPIO.setup(33,GPIO.IN, pull_up_down=GPIO.PUD_UP)   # pulsador elevacion
-GPIO.setup(8,GPIO.IN, pull_up_down=GPIO.PUD_UP)
-GPIO.setup(26,GPIO.IN, pull_up_down=GPIO.PUD_UP)   # fin de carrera elevacion y cero del medidor de elevacion
-GPIO.setup(24,GPIO.IN, pull_up_down=GPIO.PUD_UP)   # fin de carrera elevacion
-GPIO.setup(22,GPIO.IN, pull_up_down=GPIO.PUD_UP)   # cero del medidor de azimut
+# define entradas con resistencia de pull up
+GPIO.setup(PULAZDER,GPIO.IN, pull_up_down=GPIO.PUD_UP)      # pulsador azimut
+GPIO.setup(PULAZIZQ,GPIO.IN, pull_up_down=GPIO.PUD_UP)      # pulsador azimut
+GPIO.setup(PULELEARR,GPIO.IN, pull_up_down=GPIO.PUD_UP)     # pulsador elevacion
+GPIO.setup(PULELEABA,GPIO.IN, pull_up_down=GPIO.PUD_UP)     # pulsador elevacion
+GPIO.setup(FINELEABA,GPIO.IN, pull_up_down=GPIO.PUD_UP)     # fin de carrera elevacion y cero del medidor de elevacion
+GPIO.setup(FINELEARR,GPIO.IN, pull_up_down=GPIO.PUD_UP)     # fin de carrera elevacion
+GPIO.setup(HOME,GPIO.IN, pull_up_down=GPIO.PUD_UP)          # cero del medidor de azimut
 
 #Definimos el thread y lo lanzamos
 threadObj = threading.Thread(target=genera_pulsos)
@@ -335,7 +356,7 @@ threadObj.setDaemon(True)
 threadObj.start()
 
 # Abrimos el servidor para que acepte peticiones.
-server = SimpleXMLRPCServer((ip_address, 8000)) # aca poner la IP correcta de esta RPI
+server = SimpleXMLRPCServer((ip_address, 8000)) 
 print "Listening on port 8000..."                    # se queda escuchando a clientes en el puerto 8000
 
 # Registramos la funcion que hemos definido.
