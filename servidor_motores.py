@@ -31,6 +31,7 @@
 # 29/05/2016 se arreglan varios errores encontrados por Gustavo.
 # 06/06/2016 se hace un nuevo mapeo de pines -para el nuevo pcb
 # 08/06/2016 se simplifica el seteo de pines de entrada y salida y de la ip de la placa.
+# 17/06/2016 se corrige error en limites de carrera en elevacion durante el movimiento automatico.
 
 import RPi.GPIO as GPIO
 import time
@@ -126,12 +127,12 @@ def genera_pulsos():
             elif (not dirremele):
                 GPIO.output(DIR_ELE, True)                               # gira para arriba por orden remota
                 dele=-1
-                if (not GPIO.input(FINELEABA)):
+                if (not GPIO.input(FINELEARR)):
                     parado=True                                          # piso fin de carrera, detiene el motor
             else:
                 GPIO.output(DIR_ELE, False)                              # gira para abajo por orden remota
                 dele=1
-                if (not GPIO.input(FINELEARR)):
+                if (not GPIO.input(FINELEABA)):
                     parado=True                                          # piso fin de carrera, detiene el motor
                     medele=0
             #----------------------------
