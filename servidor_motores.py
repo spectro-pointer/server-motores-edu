@@ -44,8 +44,8 @@ from SimpleXMLRPCServer import SimpleXMLRPCServer
 # Salidas:
 PULSOS_AZI=40   # pulsos azimut
 DIR_AZI=38      # direccion azimut
-PULSOS_ELE=36   # pulsos elevacion
-DIR_ELE=32      # direccion elevacion
+PULSOS_ELE=32   # pulsos elevacion
+DIR_ELE=36      # direccion elevacion
 LIMPIA=12       # limpia optica
 ZORRO=16        # zorrino
 LASER=18        # puntero laser
@@ -69,7 +69,7 @@ medazi=0
 medele=0        # inicializa medidores de azimut y elevacion
 
 # Set local address
-ip_address = '192.168.0.106'  # aca poner la IP correcta de esta RPI
+ip_address = '192.168.0.101'  # aca poner la IP correcta de esta RPI
 
 #------------------------------------------------------
 # esta funcion es un thread separado que genera pulsos para los motores de acuerdo
@@ -209,12 +209,12 @@ def set_motores(orden,origen):
 
             elif (orden & 3)==3:
                 pulsremazi=False        # mueve azimut
-                dirremazi=True          # define direccion azimut
+                dirremazi=False         # define direccion azimut
                 accion="mueve azimut +"
 
             elif (orden & 1)==1:
                 pulsremazi=False        # mueve azimut
-                dirremazi=False         # define direccion azimut
+                dirremazi=True          # define direccion azimut
                 accion="mueve azimut -"
 
             elif (orden & 12)==12:      #define pulsos en elevacion
@@ -288,9 +288,9 @@ def set_motores(orden,origen):
         else:
 #..............................define direccion azimut
             if (orden & 2)==2:
-                dirremazi=True
+                dirremazi=False #True
             else:
-                dirremazi=False
+                dirremazi=True #False
 
                           #define pulsos en azimut
             if (orden & 1)==1:
