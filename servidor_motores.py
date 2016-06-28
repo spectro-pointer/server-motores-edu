@@ -32,6 +32,7 @@
 # 06/06/2016 se hace un nuevo mapeo de pines -para el nuevo pcb
 # 08/06/2016 se simplifica el seteo de pines de entrada y salida y de la ip de la placa.
 # 17/06/2016 se corrige error en limites de carrera en elevacion durante el movimiento automatico.
+# 28/06/2016 luego de verificar todos los cambios se unifica la rama coordenadas en master para dejarla como unica rama.
 
 import RPi.GPIO as GPIO
 import time
