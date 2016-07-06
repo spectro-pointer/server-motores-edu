@@ -33,6 +33,7 @@
 # 08/06/2016 se simplifica el seteo de pines de entrada y salida y de la ip de la placa.
 # 17/06/2016 se corrige error en limites de carrera en elevacion durante el movimiento automatico.
 # 29/06/2016 luego de verificar todos los cambios se unifica la rama coordenadas en master para dejarla como unica rama.
+# 05/07/2016 se agrega modo de movimiento lento desde el panel de control para ayudar al apuntamiento manual
 
 import RPi.GPIO as GPIO
 import time
@@ -68,6 +69,7 @@ dirremazi=False
 dirremele=False
 medazi=0
 medele=0        # inicializa medidores de azimut y elevacion
+modo_lento=False
 
 # Set local address
 ip_address = '192.168.0.101'  # aca poner la IP correcta de esta RPI
@@ -145,9 +147,10 @@ def genera_pulsos():
                     medele=medele+dele
             #----------------------------
             state = not state
-            #if (GPIO.input(8)):  #entrada 8 cerrada a masa para alta velocidad
-            time.sleep(0.005)  # 0.001 con 1600 pulsos por vuelta funciona bien hasta 0.0001 , o sea 100 useg funciona
-
+            if not modo_lento:  #entrada 8 cerrada a masa para alta velocidad
+                time.sleep(0.005)  # 0.001 con 1600 pulsos por vuelta funciona bien hasta 0.0001 , o sea 100 useg funciona
+            else
+                time.sleep(0.05)
     except KeyboardInterrupt:
         GPIO.cleanup()
 #       exit
@@ -180,6 +183,7 @@ def genera_pulsos():
 # orden=64 => enciende zorrino
 # orden=128 => enciende puntero laser
 # orden=224 => apaga las 3 salidas de servicio
+# orden=96 on/off modo lento
 
 def set_motores(orden,origen):
     global pulsremazi
@@ -188,6 +192,7 @@ def set_motores(orden,origen):
     global dirremele
     global medazi
     global medele
+    global modo_lento
 
     if set_motores.manual==True:
         modo="modo manual"
@@ -238,6 +243,10 @@ def set_motores(orden,origen):
                 GPIO.output(LASER, False)  # apaga puntero laser
                 accion="Apaga las 3 salidas"
 
+            elif orden==96:
+                modo_lento= not modo_lento
+                accion "cambia velocidad"
+            
             if orden==0:                # test modo automatico
                 pulsremazi=True         # detiene los motores
                 pulsremele=True
