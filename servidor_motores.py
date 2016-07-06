@@ -149,7 +149,7 @@ def genera_pulsos():
             state = not state
             if not modo_lento:  #entrada 8 cerrada a masa para alta velocidad
                 time.sleep(0.005)  # 0.001 con 1600 pulsos por vuelta funciona bien hasta 0.0001 , o sea 100 useg funciona
-            else
+            else:
                 time.sleep(0.05)
     except KeyboardInterrupt:
         GPIO.cleanup()
@@ -245,7 +245,7 @@ def set_motores(orden,origen):
 
             elif orden==96:
                 modo_lento= not modo_lento
-                accion "cambia velocidad"
+                accion="cambia velocidad"
             
             if orden==0:                # test modo automatico
                 pulsremazi=True         # detiene los motores
