@@ -3,7 +3,7 @@ __version__ = "Version 1.3"
 __copyright__ = "Copyright 2016, PydevAr"
 __email__ = "pydev.ar@gmail.com"
 
-from tracker_lib import *
+from tracker_lib_edu import *
 
 
 def main():
